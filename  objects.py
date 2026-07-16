@@ -11,7 +11,7 @@ class Disc:
     def __repr__(self):
         return self.__str__()
     
-class Distibution:
+class Distribution:
     
     def __init__(self, name=None, path=None):
         self.name = name
