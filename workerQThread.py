@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 from objects import Disc, Distibution
 import time
-from mangment import cleanDisc, recordDisc, formatToMSDOS
+from mangment import cleanDisc, recordDisc
 
 class WorkerThread(QThread):
     

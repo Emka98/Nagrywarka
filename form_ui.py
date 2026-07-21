@@ -21,9 +21,11 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout,
 
 class Ui_Form(object):
     def setupUi(self, Form):
+        
         if not Form.objectName():
             Form.setObjectName(u"Form")
         Form.resize(700, 300)
+        
         self.verticalLayout_8 = QVBoxLayout(Form)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.verticalLayout_7 = QVBoxLayout()
