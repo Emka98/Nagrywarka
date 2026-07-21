@@ -1,3 +1,5 @@
+import os
+
 class Disc:
     
     def __init__(self, node=None, size=0, name=None):
@@ -13,9 +15,9 @@ class Disc:
     
 class Distibution:
     
-    def __init__(self, name=None, path=None):
-        self.name = name
+    def __init__(self, path):
         self.path = path
+        self.name = os.path.basename(path)
     
     def __str__(self):
         return f"{self.name}"

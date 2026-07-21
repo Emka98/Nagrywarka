@@ -2,7 +2,6 @@ import subprocess
 import re
 from typing import Generator
 from objects import Disc, Distibution
-from collections import deque
 
 def discList() -> list:
     result = subprocess.run(["lsblk", "-b", "-o", "TRAN,NAME,SIZE,MODEL"], capture_output=True, text=True)
@@ -13,63 +12,75 @@ def discList() -> list:
             discs.append(Disc(node=parts[1], size=int(parts[2]), name=(" ".join(parts[3:]))))
     return discs
 
-def cleanDisc(disc: Disc, make_pation: bool) -> Generator[int, None, int]:
-    
+def cleanDisc(disc) -> Generator[float, None, None]:
     processSteps = 3
     progress = 0
-    
-    #Remove format od disc
-    try:
-        subprocess.run(["sudo", 
-                        "dd", 
-                        "if=/dev/zero", 
-                        f"of=/dev/{disc.node}", 
-                        "bs=1M", 
-                        "count=100", 
-                        "status=progress"], check=True, capture_output=True, text=True)
-        progress += 1
-        yield int(progress / processSteps * 100)
-        
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Błąd systemowy (kod {e.returncode}): {e.stderr}")
-        raise e
-        
-    #Make partition
-    try:
-        subprocess.run(["sudo",
-                        "partprobe", 
-                        f"/dev/{disc.node}"])
-        progress += 1
-        yield int(progress / processSteps * 100)
-    except subprocess.CalledProcessError as e:
-        print(f"Błąd systemowy (kod {e.returncode}): {e.stderr}")
-        raise e
-    
-    #Format FAT32
-    subprocess.run(["sudo", "umount", f"/dev/{disc.node}"], check=False, stderr=subprocess.DEVNULL)
+    device_path = f"/dev/{disc.node}"
 
     try:
+        subprocess.run(["umount", "-q", "-A", device_path], check=False)
+        subprocess.run(f" umount -q {device_path}*", shell=True, check=False)
+
         subprocess.run([
-            "sudo", 
-            "mkfs.vfat", 
-            "-I",                  
-            "-F", "32", 
-            "-n", f"{disc.name}",
-            f"/dev/{disc.node}"
+            "dd", 
+            "if=/dev/zero", 
+            f"of={device_path}", 
+            "bs=1M", 
+            "count=100"
         ], check=True, capture_output=True, text=True)
+
+        progress += 1
+        yield float(progress / processSteps * 100)
+
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr if e.stderr else e.stdout
+        print(f"Błąd systemowy przy zerowaniu (kod {e.returncode}): {error_msg.strip()}")
+        raise e
+    
+    try:
+        subprocess.run(["partprobe", device_path], check=True, capture_output=True, text=True)
         
         progress += 1
-        yield int(progress / processSteps * 100)
+        yield float(progress / processSteps * 100)
+
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr if e.stderr else e.stdout
+        print(f"Błąd systemowy partprobe (kod {e.returncode}): {error_msg.strip()}")
+        raise e
+
+
+    try:
+        subprocess.run(["umount", "-q", "-A", device_path], check=False)
+
+        subprocess.Popen(
+            [
+
+                "mkfs.vfat",
+                "-I",
+                "-F",
+                "32",
+                "-n",
+                "Transbit",
+                device_path,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        
+        progress += 1
+        yield float(progress / processSteps * 100)
         
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr if e.stderr else e.stdout
         print(f"Błąd systemowy formatowania (kod {e.returncode}): {error_msg.strip()}")
         raise e
+    return
 
-def recordDisc(disc: Disc, distibution: Distibution) -> Generator[float, None, int]:
+def recordDisc(disc: Disc, distibution: Distibution) -> Generator[float, None, None]:
     p1 = subprocess.Popen(
-        ["sudo", "qemu-img", "convert", "-p", distibution.path, "-O", "raw", f"/dev/{disc.node}"],
+        ["qemu-img", "convert", "-p", distibution.path, "-O", "raw", f"/dev/{disc.node}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -78,14 +89,7 @@ def recordDisc(disc: Disc, distibution: Distibution) -> Generator[float, None, i
     )
     
     for line in p1.stdout:
-        yield line
-    
+        progress = re.findall(r"\d+\.?\d*", line)[0]
+        yield float(progress)
+    return
 
-disc = Disc(node="sdb", name="Kutasek")
-distibution = Distibution(path="/home/emil/Desktop/noble-server-cloudimg-amd64.img", name="noble-server-cloudimg-amd64.img")
-
-for i in cleanDisc(disc, True):
-    print(i)
-    
-for i in recordDisc(disc, distibution):
-    print(i)

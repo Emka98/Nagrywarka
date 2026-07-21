@@ -1,26 +1,34 @@
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 from objects import Disc, Distibution
-import time
 from mangment import cleanDisc, recordDisc
 
 class WorkerThread(QThread):
     
-    progressClean_updated = pyqtSignal(float)
-    progressRecord_updated = pyqtSignal(float)
+    progressClean_updated = Signal(float)
+    progressRecord_updated = Signal(float)
 
-    # def __init__(self, action_type: str, disc: Disc, distribution: Distibution = None):
-    def __init__(self, action: str):
+    def __init__(self, clean:bool, record:bool, disc:Disc, distribution:Distibution = None):
+        
         super().__init__()
-        self.action = action
-        # self.disc = disc
-        # self.distribution = distribution
+        self.clean = clean
+        self.record = record
+        self.disc = disc
+        self.distribution = distribution
         
     def run(self):
-        if self.action == "clean":
-            for i in range(101):
-                time.sleep(0.1)
-                self.progressClean_updated.emit(i)
-        elif self.action == "record":
-            for i in range(101):
-                time.sleep(0.1)
-                self.progressRecord_updated.emit(i)
+            try:
+                if self.clean:
+                    for i in cleanDisc(self.disc):
+                        print(i)
+                        self.progressClean_updated.emit(i)
+
+                if self.record:
+                    for i in recordDisc(self.disc, self.distribution):
+                        print(i)
+                        self.progressRecord_updated.emit(i)
+
+            except Exception as e:
+                print(f"Błąd podczas wykonywania zadania w wątku: {e}")
+                return
+
+            return
