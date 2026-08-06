@@ -1,2 +1,1 @@
 # Nagrywarka
-# Nagrywarka
